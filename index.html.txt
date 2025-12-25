@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Para Ñiel 🎄</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;600&family=Dancing+Script:wght@700&family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg: #1a0b2e;
+            --gold: #f1c40f;
+            --pink: #ff7979;
+            --blue: #7ed6df;
+            --glass: rgba(10, 10, 20, 0.95);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        
+        body { 
+            margin: 0; padding: 0; background: #000; 
+            font-family: 'Fredoka', sans-serif; 
+            height: 100vh; overflow: hidden; color: white;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        #game-layer {
+            position: relative; width: 100%; height: 100%; max-width: 500px;
+            background: #2c1b18; overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5); border: 2px solid #444;
+        }
+        #snow-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+        /* --- PANTALLAS --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; z-index: 10;
+            background-size: cover; background-position: center;
+            opacity: 0; transition: opacity 0.5s;
+        }
+        .screen.active { display: flex; opacity: 1; pointer-events: auto; }
+        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.75); z-index: 0; }
+        .content-layer { position: relative; z-index: 20; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+
+        /* --- UI ELEMENTS --- */
+        h1 { font-family: 'Press Start 2P'; color: var(--gold); font-size: 1.2rem; text-align: center; line-height: 1.5; text-shadow: 3px 3px #000; margin-bottom: 20px; }
+        
+        .story-box {
+            background: rgba(0, 0, 0, 0.9); border: 2px solid var(--gold);
+            padding: 20px; border-radius: 15px; width: 95%; margin-bottom: 20px;
+            min-height: 120px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; text-align: center; font-family: 'Fredoka'; line-height: 1.4;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff7979, #ffbe76);
+            border: 3px solid #fff; padding: 15px 30px; border-radius: 50px;
+            color: #fff; font-family: 'Fredoka'; font-weight: bold; font-size: 1rem;
+            margin: 10px; cursor: pointer; box-shadow: 0 5px 0 #b33939; transition: 0.1s;
+            width: 80%; max-width: 300px; text-transform: uppercase;
+        }
+        .btn:active { transform: translateY(5px); box-shadow: none; }
+        .btn-blue { background: linear-gradient(45deg, #7ed6df, #22a6b3); box-shadow: 0 5px 0 #136a75; }
+
+        /* --- GAIA EMOJI --- */
+        .gaia-circle {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); border: 4px solid white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 6rem; cursor: pointer; margin-bottom: 20px;
+            box-shadow: 0 0 20px var(--gold); animation: float 3s infinite;
+        }
+        .gaia-circle:active { transform: scale(0.9); }
+
+        /* --- HUB & INVENTARIO --- */
+        .hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 10px; }
+        .hub-item {
+            background: rgba(255,255,255,0.1); border-radius: 15px; padding: 15px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 2px solid rgba(255,255,255,0.3); cursor: pointer; transition: 0.2s;
+        }
+        .hub-item:active { background: rgba(255,255,255,0.3); }
+        .hub-icon { font-size: 2rem; margin-bottom: 5px; }
+
+        .inventory-box {
+            margin-top: 10px; width: 100%; background: rgba(0,0,0,0.8); 
+            padding: 10px; border-radius: 10px; border: 1px solid #555;
+        }
+        .inv-slots { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin-top: 5px; }
+        .slot { 
+            width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 5px; 
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; 
+            cursor: pointer; border: 1px solid #555; position: relative;
+        }
+        .slot.has-item { border-color: var(--gold); background: rgba(255, 218, 121, 0.2); }
+
+        /* --- GACHAPON --- */
+        .gacha-ball {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff7979, #badc58);
+            border: 5px solid #fff; box-shadow: 0 0 30px var(--gold);
+            margin-bottom: 20px; cursor: pointer; animation: float 3s infinite;
+            display: flex; align-items: center; justify-content: center; font-size: 4rem;
+        }
+        
+        /* Modal Universal */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 100; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #fff; color: #333; padding: 25px; border-radius: 20px;
+            width: 85%; text-align: center; border: 5px solid var(--gold);
+            animation: pop 0.3s;
+        }
+
+        /* --- CARTA --- */
+        .letter-paper {
+            background: #fff0f5; color: #2d3436; padding: 25px; border-radius: 10px;
+            width: 95%; max-height: 70vh; overflow-y: auto; text-align: left;
+            font-family: 'Dancing Script', cursive; font-size: 1.3rem; line-height: 1.6;
+            border: 2px solid #ffcccc;
+        }
+
+        /* --- JUEGO --- */
+        .game-area {
+            width: 100%; height: 300px; border: 2px dashed rgba(255,255,255,0.5);
+            border-radius: 15px; position: relative; margin-bottom: 20px;
+            background: rgba(0,0,0,0.3); overflow: hidden; touch-action: none;
+        }
+        .star { position: absolute; font-size: 3rem; animation: spin 2s infinite; cursor: pointer; transition: 0.2s; }
+        .float-msg { position: absolute; color: var(--gold); font-weight: bold; font-size: 1rem; pointer-events: none; animation: floatUp 1s forwards; }
+
+        /* --- ANIMACIONES --- */
+        @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-15px);} }
+        @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.1);} 100%{transform:scale(1);} }
+        @keyframes spin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
+        @keyframes shake { 0%{transform:rotate(0deg);} 25%{transform:rotate(10deg);} 75%{transform:rotate(-10deg);} 100%{transform:rotate(0deg);} }
+        @keyframes floatUp { 0%{transform:translateY(0); opacity:1;} 100%{transform:translateY(-50px); opacity:0;} }
+
+        .music-ctrl {
+            position: absolute; top: 10px; right: 10px; z-index: 50;
+            background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 20px;
+            border: 1px solid #fff; font-size: 0.8rem; cursor: pointer;
+        }
+
+        .quote-box {
+            min-height: 150px; background: #fff; color: #333; padding: 20px;
+            border-radius: 10px; border-left: 5px solid var(--pink); margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <audio id="bgm" loop>
+        <source src="musica.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="game-layer">
+        <canvas id="snow-canvas"></canvas>
+        <div class="music-ctrl" onclick="toggleMusic()">🎵 Música</div>
+
+        <div id="scr-start" class="screen active" style="background-image: url('foto1.png');">
+            <div class="overlay"></div>
+            <div class="content-layer">
+                <h1>EL SANTUARIO<br>DE ÑIEL</h1>
+                <p>Edición Navidad 2025</p>
+                <button class="btn" onclick="startApp()">ABRIR REGALO</button>
+            </div>
+        </div>
+
+        <div id="scr-gaia" class="screen" style="background-image: url('foto2.png');">
+            <div class="overlay"></div>
+            <div class="content-layer">
+                <div id="gaia-emoji" class="gaia-circle" onclick="gaiaTalk()">🐶</div>
+                
+                <div class="story-box" style="min-height:100px;">
+                    <p id="gaia-dialog" style="margin:0;"><strong>Gaia:</strong> "¡Sniff, sniff! (Te huele con curiosidad)"</p>
+                </div>
+                <input type="text" id="pass" placeholder="Tu nombre..." style="padding:15px; border-radius:10px; border:none; width:80%; text-align:center; margin-bottom:10px; font-family:'Fredoka'; font-size:1.1rem;">
+                <button class="btn" onclick="checkPass()">SOY YO</button>
+            </div>
+        </div>
+
+        <div id="scr-story" class="screen" style="background-color: #000;">
+            <div class="content-layer">
+                <div class="story-box" style="border: none; background: transparent;">
+                    <p id="story-text" style="font-size: 1.3rem;"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="scr-hub" class="screen" style="background-image: url('foto3.png');">
+            <div class="overlay"></div>
+            <div class="content-layer">
+                <h2 style="font-family:'Press Start 2P'; color:var(--gold); margin-bottom:10px; font-size: 1rem;">VILLA NAVIDAD</h2>
+                
+                <div class="hub-grid">
+                    <div class="hub-item" onclick="go('scr-gacha')">
+                        <div class="hub-icon">🎰</div>
+                        <span>Gachapon</span>
+                    </div>
+                    <div class="hub-item" onclick="go('scr-support')">
+                        <div class="hub-icon">💖</div>
+                        <span>Ánimo</span>
+                    </div>
+                    <div class="hub-item" onclick="startGame()">
+                        <div class="hub-icon">⭐</div>
+                        <span>Jugar</span>
+                    </div>
+                    <div class="hub-item" onclick="go('scr-letter')">
+                        <div class="hub-icon">💌</div>
+                        <span>Carta</span>
+                    </div>
+                </div>
+
+                <div class="inventory-box">
+                    <div style="font-size: 0.7rem; color: #ccc;">MOCHILA (¡Usa tus objetos!):</div>
+                    <div class="inv-slots" id="inv-container"></div>
+                    <div style="font-size: 0.6rem; text-align: center; margin-top: 5px; color: var(--gold);" id="collection-status">Colección: 0/6</div>
+                </div>
+
+                <div style="position: absolute; bottom: 10px; right: 10px; font-size: 2.5rem; opacity: 0.5; z-index: 100; cursor: pointer;" onclick="startSecretStory()">🐾</div>
+            </div>
+        </div>
+
+        <div id="scr-gacha" class="screen" style="background-color: #2c3e50;">
+            <div class="content-layer">
+                <h1>GACHAPON</h1>
+                <div class="gacha-ball" onclick="pullGacha()">?</div>
+                <p>Cuesta 1 Clic. (¡Cuidado con la basura!)</p>
+                <button class="btn btn-blue" onclick="go('scr-hub')">VOLVER</button>
+            </div>
+        </div>
+
+        <div id="scr-support" class="screen" style="background-color: #fd79a8;">
+            <div class="content-layer">
+                <h1 style="color: #fff; text-shadow: none;">ONERYU DICE:</h1>
+                <div class="quote-box">
+                    <p id="quote-text">Presiona el botón...</p>
+                </div>
+                <button class="btn btn-blue" onclick="newQuote()">NUEVO MENSAJE</button>
+                <button class="btn" style="background:transparent; border:2px solid white;" onclick="go('scr-hub')">VOLVER</button>
+            </div>
+        </div>
+
+        <div id="scr-game" class="screen" style="background-color: #222;">
+            <div class="content-layer">
+                <h1>NIVEL <span id="game-lvl">1</span></h1>
+                <p id="game-msg">Atrapa las estrellas</p>
+                <div id="game-area" class="game-area"></div>
+                <p>Puntuación: <span id="score">0</span></p>
+            </div>
+        </div>
+
+        <div id="scr-letter" class="screen" style="background-image: url('foto3.png');">
+            <div class="overlay"></div>
+            <div class="content-layer">
+                <div class="letter-paper">
+                    <p><strong>Querida Ambar (Ñiel):</strong></p>
+                    <p>En este mundo a veces ruidoso y complicado, encontrar a alguien con un corazón tan noble y puro como el tuyo es el verdadero regalo.</p>
+                    <p>Me alegra inmensamente que nuestros caminos se cruzaran. Eres una persona increíblemente buena, valiente y especial. Tienes una luz propia que ni los ladridos de Gaia pueden tapar.</p>
+                    <p>Espero que este pequeño santuario digital te sirva de refugio cuando necesites sonreír. Recuerda que aquí siempre serás la protagonista y que tienes a alguien que te aprecia mucho.</p>
+                    <p>Que esta Navidad esté llena de paz, de momentos bonitos y de todo el cariño que te mereces.</p>
+                    <br>
+                    <p style="text-align: right; color: #d63031; font-weight: bold;">
+                        Con mucho cariño,<br>Oneryu.<br>
+                        Te quiero mucho, Ñielito.
+                    </p>
+                </div>
+                <button class="btn" onclick="go('scr-hub')">GUARDAR</button>
+            </div>
+        </div>
+
+        <div id="scr-secret" class="screen" style="background-color: black;">
+            <div class="content-layer">
+                <div id="secret-text-box" class="story-box" style="border-color: #ff4757;">
+                    <p id="secret-text">...</p>
+                </div>
+                <div id="secret-img-container" style="display:none; flex-direction: column; align-items: center;">
+                    <img src="foto4.png" style="width: 100%; border: 5px solid white; border-radius: 10px; box-shadow: 0 0 20px white;">
+                    <h2 style="color:var(--gold); margin-top:20px;">DESCANSO ETERNO</h2>
+                    <p>Aquí Gaia y los dragones recargan energía.</p>
+                    <button class="btn btn-blue" onclick="go('scr-hub')">VOLVER</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <div style="font-size: 4rem;" id="m-icon"></div>
+                <h3 id="m-title" style="color: #e84393; margin:0;"></h3>
+                <p id="m-desc" style="font-size: 0.9rem; color: #555;"></p>
+                <div id="m-action-btn"></div>
+                <button class="btn" onclick="closeModal()" style="margin-top:10px; background:#ccc; color:#333;">CERRAR</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* --- SONIDO --- */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function sfx(freq, type) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = type; o.frequency.value = freq;
+            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(); o.stop(audioCtx.currentTime + 0.1);
+        }
+        function clickSfx() { sfx(400, 'sine'); }
+        function winSfx() { sfx(600, 'square'); setTimeout(()=>sfx(800, 'square'), 100); }
+        function crunchSfx() { sfx(100, 'sawtooth'); setTimeout(()=>sfx(150, 'sawtooth'), 50); }
+        function magicSfx() { sfx(1000, 'sine'); setTimeout(()=>sfx(1500, 'sine'), 100); }
+
+        /* --- VARIABLES --- */
+        const bgm = document.getElementById('bgm');
+        let score = 0;
+        let inventory = [];
+        let gameLevel = 1;
+        let gaiaStep = 0;
+
+        /* --- ITEMS & GACHA --- */
+        const trash = [
+            {icon:"🧦", name:"Calcetín Viejo", desc:"Puaj..."},
+            {icon:"🪨", name:"Carbón", desc:"¿Te has portado mal?"},
+            {icon:"📄", name:"Papel", desc:"Solo basura."}
+        ];
+        
+        const prizes = [
+            {id:1, icon:"💎", name:"Diamante", desc:"Brillas tanto como él.", action:"magic"},
+            {id:2, icon:"🐉", name:"Mini Dragón", desc:"Tu fiel compañero.", action:"roar"},
+            {id:3, icon:"🍪", name:"Galleta", desc:"Para endulzar tu día.", action:"eat"},
+            {id:4, icon:"👑", name:"Corona", desc:"Porque eres una reina.", action:"wear"},
+            {id:5, icon:"🌹", name:"Rosa Eterna", desc:"Tu bondad nunca muere.", action:"smell"},
+            {id:6, icon:"❄️", name:"COPO ETERNO", desc:"Un recuerdo único.", action:"freeze"}
+        ];
+
+        /* --- FRASES MOTIVACIÓN (NO REPEAT) --- */
+        const baseQuotes = [
+ "Eres más fuerte de lo que imaginas.",
+ "Incluso en los días grises, tu luz sigue ahí.",
+ "Respira profundo, nadie te está apurando.",
+ "Si hoy no puedes con todo, no pasa nada.",
+ "Tu existencia ya es valiosa.",
+ "Hoy sobrevivir también cuenta.",
+ "Está bien ir despacio, no es carrera.",
+ "Si el mundo pesa mucho hoy, suéltalo un ratito.",
+ "Eres importante incluso cuando dudas.",
+ "Todo se va acomodando, aunque ahora no lo parezca.",
+ "Si estar cansada fuera delito, hoy estarías prófuga.",
+ "Tómate un respiro, el drama puede esperar.",
+ "Tu corazón entiende cosas que la cabeza no.",
+ "No todo tiene que doler para valer.",
+ "Eres más capaz de lo que crees.",
+ "Hoy hiciste lo suficiente, créeme.",
+ "Si hoy solo exististe, ya hiciste bastante.",
+ "Eres luz incluso en modo ahorro de energía.",
+ "Respirar también es un logro.",
+ "Si pudieras verte desde afuera, te admirarías.",
+ "Todo pasa, incluso este nudo en el pecho.",
+ "Eres calma para otros sin notarlo.",
+ "Si hoy lloras, que sea sin culpas.",
+ "Tu sensibilidad no es debilidad.",
+ "Eres parte de algo bonito.",
+ "Hoy no tienes que demostrar nada.",
+ "Si el día se pone raro, tú sigue siendo tú.",
+ "Eres más valiosa que cualquier mal pensamiento.",
+ "Si el universo tuviera favoritos, tú estarías en la lista.",
+ "No te hables feo, no lo mereces.",
+ "Eres un lugar seguro.",
+ "Hoy también cuenta, aunque sea en pijama.",
+ "Tu presencia deja bien.",
+ "Si hoy no sonríes, mañana se intenta de nuevo.",
+ "Eres fuerte incluso cuando te cansas.",
+ "Todo se acomoda, incluso lo que hoy duele.",
+ "Si lloras, que sea con descanso después.",
+ "Eres más real que perfecta.",
+ "Tu forma de ser ya es suficiente.",
+ "Hoy no toca ser valiente, toca ser humana.",
+ "Eres constancia silenciosa.",
+ "Si el día fuera una peli, tú eres el personaje importante.",
+ "Tu existencia suma, siempre.",
+ "Si hoy el mundo no coopera, tú tampoco te exijas.",
+ "Eres aprendizaje en proceso.",
+ "Hoy también mereces cosas bonitas.",
+ "Si hoy no puedes más, mañana habrá energía nueva.",
+ "Eres más luz de la que imaginas.",
+ "Todo llega a su momento, incluso la calma.",
+ "Si el día pesa, suéltalo aquí un rato.",
+ "Eres parte de algo que importa.",
+ "Hoy también es un buen día para ser amable contigo.",
+ "Si hoy te sientes pequeña, recuerda todo lo que has pasado.",
+ "Eres equilibrio, aunque a veces tiemble.",
+ "Si hoy te duele, no estás rota.",
+ "Eres presencia que reconforta.",
+ "Si hoy solo respiraste, ya ganaste.",
+ "Todo mejora, incluso lento.",
+ "Eres paz en construcción.",
+ "Si hoy te cansas de todo, descansa, no renuncies.",
+ "Eres más fuerte de lo que recuerdas.",
+ "Hoy no te rindas contigo.",
+ "Si hoy el ánimo está bajo, mañana se recarga.",
+ "Eres luz cotidiana.",
+ "Todo va a estar bien, de verdad.",
+ "Si hoy no hay respuestas, está bien.",
+ "Eres avance aunque no lo notes.",
+ "Hoy también mereces descanso.",
+ "Si hoy lloras, que sea porque sientes, no porque fallaste.",
+ "Eres parte de algo bonito, incluso en silencio.",
+ "Si hoy el mundo grita, tú baja el volumen.",
+ "Eres calma posible.",
+ "Todo pasa, incluso los días pesados.",
+ "Si hoy te cuesta, no estás sola en sentirlo.",
+ "Eres más de lo que dudas.",
+ "Hoy también fue un paso.",
+ "Si hoy no puedes sonreír, aquí hay palabras para eso.",
+ "Eres luz incluso cansada.",
+ "Todo se acomoda, aunque tarde.",
+ "Si hoy te sientes frágil, también es válido.",
+ "Eres suficiente, incluso así.",
+ "Hoy también cuenta.",
+ "Eres más importante de lo que crees.",
+ "Si hoy no fue fácil, no fue en vano.",
+ "Eres alguien que importa.",
+ "Eres más fuerte de lo que imaginas, Ñiel.",
+ "Incluso en los días grises, tu luz sigue ahí, Xiel.",
+ "Respira profundo, Ambar.",
+ "Si hoy no puedes con todo, no pasa nada, Ñielito.",
+ "Tu existencia ya es valiosa, Ñiel.",
+ "Hoy sobrevivir también cuenta, Xiel.",
+ "Está bien ir despacio, Ambar.",
+ "Todo se va acomodando, Ñielito.",
+ "Eres suficiente, Xiel.",
+ "Todo va a estar bien, Ambar."
+
+        ];
+        let quoteDeck = [...baseQuotes];
+
+        /* --- NAVEGACIÓN --- */
+        function go(id) {
+            clickSfx();
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(id === 'scr-hub') updateInventory();
+        }
+
+        /* --- AUDIO --- */
+        function toggleMusic() {
+            if(bgm.paused) bgm.play(); else bgm.pause();
+        }
+
+        /* --- HISTORIA INICIO --- */
+        function startApp() {
+            bgm.volume = 0.5;
+            bgm.play().catch(e=>console.log("Click needed"));
+            go('scr-gaia');
+        }
+
+        /* --- GAIA LÓGICA (SECUECNIAL) --- */
+        const gaiaSeq = [
+            "Gaia: (Sniff, sniff... te huele la mano)",
+            "Gaia: (Mueve la cola... le resultas familiar)",
+            "Gaia: (Te mira esperando que digas el nombre mágico)",
+            "Gaia: ¡Grrr! Humano, identifícate o muerdo."
+        ];
+
+        function gaiaTalk() {
+            clickSfx();
+            const el = document.getElementById('gaia-emoji');
+            const txt = document.getElementById('gaia-dialog');
+            
+            el.style.animation = "shake 0.3s";
+            setTimeout(()=> el.style.animation = "float 3s infinite", 300);
+
+            if(gaiaStep < gaiaSeq.length) {
+                txt.innerHTML = `<strong>${gaiaSeq[gaiaStep]}</strong>`;
+                gaiaStep++;
+            } else {
+                txt.innerHTML = `<strong>Gaia:</strong> ¡Vamos! Di 'Ñiel' o 'Ambar'.`;
+            }
+        }
+
+        function checkPass() {
+            const v = document.getElementById('pass').value.toLowerCase();
+            if(v.includes('ñiel')||v.includes('ambar')||v.includes('xiel')) {
+                winSfx();
+                // TRANSICIÓN A HISTORIA
+                go('scr-story');
+                runStoryTransition();
+            } else {
+                sfx(150, 'sawtooth');
+                alert("Gaia gruñe... Intenta de nuevo.");
+            }
+        }
+
+        /* --- HISTORIA TRANSICIÓN --- */
+        async function runStoryTransition() {
+            const txt = document.getElementById('story-text');
+            txt.innerText = "Gaia reconoce tu aroma..."; await wait(2000);
+            txt.innerText = "Te lame la mano felizmente: '¡Mi ama Ambar ha vuelto!'"; await wait(3000);
+            txt.innerText = "Las puertas del santuario se abren para ti..."; await wait(2000);
+            go('scr-hub');
+        }
+
+        /* --- GACHAPON --- */
+        function pullGacha() {
+            clickSfx();
+            if(Math.random() < 0.4) {
+                const junk = trash[Math.floor(Math.random()*trash.length)];
+                showModal(junk.icon, junk.name, junk.desc, null);
+            } else {
+                let available = prizes.filter(p => !inventory.includes(p.id));
+                let prize;
+                if(available.length === 0) {
+                    prize = prizes[Math.floor(Math.random()*prizes.length)];
+                    showModal(prize.icon, prize.name, "¡Repetido! Pero te lo quedas.", null);
+                } else {
+                    prize = available[Math.floor(Math.random()*available.length)];
+                    inventory.push(prize.id);
+                    winSfx();
+                    showModal(prize.icon, prize.name, prize.desc, null);
+                }
+            }
+        }
+
+        function showModal(i, t, d, action) {
+            document.getElementById('m-icon').innerText = i;
+            document.getElementById('m-title').innerText = t;
+            document.getElementById('m-desc').innerText = d;
+            
+            const btnArea = document.getElementById('m-action-btn');
+            btnArea.innerHTML = "";
+            
+            if(action) {
+                let btnTxt = "USAR";
+                if(action === 'eat') btnTxt = "COMER";
+                if(action === 'roar') btnTxt = "ACARICIAR";
+                btnArea.innerHTML = `<button class="btn btn-blue" onclick="useItem('${action}')">${btnTxt}</button>`;
+            }
+            
+            document.getElementById('modal').style.display = 'flex';
+        }
+        
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+        /* --- INVENTARIO --- */
+        function updateInventory() {
+            const c = document.getElementById('inv-container');
+            c.innerHTML = "";
+            for(let i=0; i<6; i++) {
+                if(i < inventory.length) {
+                    let item = prizes.find(p => p.id === inventory[i]);
+                    c.innerHTML += `<div class="slot has-item" onclick="showModal('${item.icon}', '${item.name}', '${item.desc}', '${item.action}')">${item.icon}</div>`;
+                } else {
+                    c.innerHTML += `<div class="slot"></div>`;
+                }
+            }
+            document.getElementById('collection-status').innerText = `Colección: ${inventory.length}/6`;
+        }
+
+        function useItem(action) {
+            closeModal();
+            if(action === 'eat') { crunchSfx(); alert("¡Ñam! Estaba deliciosa."); }
+            if(action === 'roar') { sfx(100, 'sawtooth'); alert("¡ROAAR! (Te quiere)"); }
+            if(action === 'magic') { magicSfx(); document.body.style.filter = "hue-rotate(90deg)"; setTimeout(()=>document.body.style.filter="", 1000); }
+            if(action === 'wear') { winSfx(); alert("¡Te queda genial, Reina!"); }
+            if(action === 'freeze') { magicSfx(); alert("El tiempo se detiene un instante..."); }
+            if(action === 'smell') { alert("Huele a vainilla y hogar."); }
+        }
+
+        /* --- MOTIVACIÓN --- */
+        function newQuote() {
+            clickSfx();
+            if(quoteDeck.length === 0) quoteDeck = [...baseQuotes]; // Refill
+            
+            // Pick random and remove to avoid repeat
+            const idx = Math.floor(Math.random() * quoteDeck.length);
+            const q = quoteDeck[idx];
+            quoteDeck.splice(idx, 1);
+            
+            const el = document.getElementById('quote-text');
+            el.style.opacity = 0;
+            setTimeout(()=>{ el.innerText = `"${q}"`; el.style.opacity=1; }, 200);
+        }
+
+        /* --- JUEGO (4 NIVELES) --- */
+        function startGame() {
+            gameLevel = 1; score = 0; initLevel();
+            go('scr-game');
+        }
+        function initLevel() {
+            const area = document.getElementById('game-area');
+            area.innerHTML = "";
+            document.getElementById('game-lvl').innerText = gameLevel;
+            
+            let target = 5;
+            let msg = "Nivel 1: Fácil";
+            
+            if(gameLevel === 2) { msg = "Nivel 2: Se mueven"; target=6; }
+            if(gameLevel === 3) { msg = "Nivel 3: ¡Rápido!"; target=8; }
+            if(gameLevel === 4) { msg = "Nivel Final: ¡CORRE!"; target=10; }
+            
+            document.getElementById('game-msg').innerText = msg;
+            document.getElementById('score').innerText = `${score}/${target}`;
+            
+            spawnStar(target);
+        }
+
+        function spawnStar(maxScore) {
+            if(score >= maxScore) {
+                if(gameLevel < 4) { winSfx(); alert("¡Nivel Superado!"); gameLevel++; score=0; initLevel(); }
+                else { winSfx(); alert("¡GANASTE TODO! Mensaje Navideño Desbloqueado: 'Eres Brillante'."); go('scr-hub'); }
+                return;
+            }
+
+            const s = document.createElement('div');
+            s.innerText="⭐"; s.className="star";
+            
+            // Movimiento
+            if(gameLevel > 1) {
+                let speed = gameLevel === 2 ? 1000 : (gameLevel === 3 ? 600 : 400);
+                s.style.transition = `all ${speed/1000}s`;
+                setInterval(()=>{
+                    s.style.top=Math.random()*80+"%"; s.style.left=Math.random()*80+"%";
+                }, speed);
+            }
+            // Taunt Text en nivel alto
+            if(gameLevel >= 3) {
+                s.onclick = (e) => {
+                    e.stopPropagation();
+                    // Fake escape sometimes
+                    if(Math.random() > 0.7) { 
+                        s.style.top=Math.random()*80+"%"; 
+                        showFloatMsg(e.clientX, e.clientY, "¡Jiji!");
+                    } else {
+                        catchStar(s, maxScore);
+                    }
+                };
+            } else {
+                s.onclick = () => catchStar(s, maxScore);
+            }
+
+            s.style.top=Math.random()*80+"%"; s.style.left=Math.random()*80+"%";
+            document.getElementById('game-area').appendChild(s);
+        }
+
+        function catchStar(el, max) {
+            clickSfx(); el.remove(); score++;
+            document.getElementById('score').innerText = `${score}/${max}`;
+            showFloatMsg(el.offsetLeft, el.offsetTop, "¡Bien!");
+            spawnStar(max);
+        }
+
+        function showFloatMsg(x, y, txt) {
+            const msg = document.createElement('div');
+            msg.innerText = txt; msg.className = 'float-msg';
+            msg.style.left = x + 'px'; msg.style.top = y + 'px';
+            document.body.appendChild(msg);
+            setTimeout(()=>msg.remove(), 1000);
+        }
+
+        /* --- SECRETO (SUSPENSO) --- */
+        async function startSecretStory() {
+            if(!confirm("¿Seguir el rastro?")) return;
+            go('scr-secret');
+            document.getElementById('secret-img-container').style.display='none';
+            document.getElementById('secret-text-box').style.display='flex';
+            
+            const t = document.getElementById('secret-text');
+            t.innerText = "..."; await wait(1000);
+            t.innerText = "Escuchas una respiración suave..."; await wait(2000);
+            t.innerText = "Sigues las huellas en la nieve..."; await wait(2000);
+            t.innerText = "Te acercas muy despacio..."; await wait(2000);
+            t.innerText = "¡MIRA!"; await wait(1000);
+            
+            document.getElementById('secret-text-box').style.display='none';
+            document.getElementById('secret-img-container').style.display='flex';
+            winSfx();
+        }
+        function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        /* --- NIEVE --- */
+        const cvs = document.getElementById('snow-canvas');
+        const ctx = cvs.getContext('2d');
+        cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+        const p = Array(50).fill().map(()=>({x:Math.random()*cvs.width, y:Math.random()*cvs.height, r:Math.random()*2+1, d:Math.random()*1+0.5}));
+        function draw(){
+            ctx.clearRect(0,0,cvs.width,cvs.height);
+            ctx.fillStyle="white";
+            p.forEach(fl=>{
+                fl.y+=fl.d; if(fl.y>cvs.height) fl.y=0;
+                ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r, 0, Math.PI*2); ctx.fill();
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
